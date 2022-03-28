@@ -1,26 +1,41 @@
-import React from 'react';
-import logo from './logo.svg';
+import React, { VFC, useEffect, useState } from 'react';
+import { getAuth, User } from 'firebase/auth/cordova';
+import AuthGoogle from 'AuthGoogle';
+import AuthFirebaseUI from 'AuthFirebaseUI';
+
 import './App.css';
 
-function App() {
+const App: VFC = () => {
+  const [user, setUser] = useState<User>();
+  const auth = getAuth();
+  useEffect(() => {
+    auth.onAuthStateChanged(async (u) => {
+      if (u) {
+        console.log(JSON.stringify(user));
+        alert(`login:${u.displayName}`);
+        setUser(u);
+      } else {
+        setUser(undefined);
+      }
+    });
+  }, [auth]);
+
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      {/* <AuthGoogle /> */}
+
+      {user ? user.displayName + 'logged in.' : 'not loggin'}
+      {user ? (
+        <input
+          type="button"
+          onClick={() => getAuth().signOut()}
+          value="logout"
+        />
+      ) : (
+        <AuthFirebaseUI />
+      )}
     </div>
   );
-}
+};
 
 export default App;

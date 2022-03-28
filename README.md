@@ -1,46 +1,87 @@
-# Getting Started with Create React App
+# Cordova(android)でFirebase Authenticationを利用する手順
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## CordovaではWebアプリと同じ手順で認証ができない
 
-## Available Scripts
+### [Cordova で OAuth プロバイダを使用して認証する](https://firebase.google.com/docs/auth/web/cordova#web-version-9_2)
 
-In the project directory, you can run:
+を参考にして、Firebaseの設定を行う
 
-### `npm start`
+1. Firebaseプロジェクトを作成する
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+1. アプリの追加(Android)を追加
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+    `keytool -list -printcert -jarfile app-debug.apk`
 
-### `npm test`
+1. Firebase Dynamic Links を有効にする
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+1. メールログイン、Googleログインを有効にする
 
-### `npm run build`
+1. 必要なプラグインを追加する(Firebaseのページに記載されている下記プラグインはコンパイルエラーとなるため、一部修正する必要がある)
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+    1. AndroidXEnabledを有効化＋cordova-plugin-androidx-adapterを読み込む
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+    1. 不要なバージョンチェックをコメントアウト
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+    1. cordova-universal-links-plugin　がエラー(Cannot read property 'manifest' of undefined)となるため、修正版に置き換える
 
-### `npm run eject`
+    ```
+    # Plugin to pass application build info (app name, ID, etc) to the OAuth widget.
+    cordova plugin add cordova-plugin-buildinfo --save
+    # Plugin to handle Universal Links (Android app link redirects)
+    cordova plugin add cordova-universal-links-plugin-fix --save
+    # Plugin to handle opening secure browser views on iOS/Android mobile devices
+    cordova plugin add cordova-plugin-browsertab --save
+    # Plugin to handle opening a browser view in older versions of iOS and Android
+    cordova plugin add cordova-plugin-inappbrowser --save
+    # Plugin to handle deep linking through Custom Scheme for iOS
+    # Substitute *com.firebase.cordova* with the iOS bundle ID of your app.
+    cordova plugin add cordova-plugin-customurlscheme --variable \
+        URL_SCHEME=com.firebase.cordova --save
+    ```
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+https://github.com/nordnet/cordova-universal-links-plugin/issues/133
+cordova-universal-links-plugin を下記に変更する
+```
+cordova plugin add https://github.com/walteram/cordova-universal-links-plugin
+```
+---
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+https://qiita.com/rs_tukki/items/a1af87df2c792a3ef71b
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+バージョンチェックでエラーになるが、2022年時点では不要のためコメントアウト
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+platforms\android\cordova-plugin-browsertab\cordovafirebaseauth-BrowserTab.gradle
+```
+// def minSdkVersion = 16
 
-## Learn More
+// if(cdvMinSdkVersion == null) {
+//     ext.cdvMinSdkVersion = minSdkVersion;
+// } else if (cdvMinSdkVersion.toInteger() < minSdkVersion) {
+//     ext.cdvMinSdkVersion = minSdkVersion;
+// }
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+---
+latforms\android\app\src\main\java\com\google\cordova\plugin\BrowserTab.java:21: エラー: シンボルを見つけられません
+古いプラグインでシンボルのエラーが発生する。
+'''
+<preference name="AndroidXEnabled" value="true" />
+'''
+かつ、cordova-plugin-androidx-adapterを読み込み、互換性を確保する
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+https://stackoverflow.com/questions/63383216/ionic-5-app-no-longer-builds-after-updating-android-studio
+
+First ensure AndroidX is enabled in your Cordova project. Either make sure the Android platform is cordova-android@9 or install cordova-plugin-androidx into a cordova-android@8 project.
+
+Then install cordova-plugin-androidx-adapter which will dynamically patch the source code of plugins to migrate from Android Support Library to AndroidX. Note this currently only works for Java and XML source files (not Kotlin or compiled libraries e.g. JAR or AAR).
+```
+cordova plugin add cordova-plugin-androidx-adapter
+```
+
+
+---
+
+FirebaseコンソールでAndroid アプリを設定
+
+
+
